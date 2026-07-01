@@ -1,0 +1,9 @@
+data_root: "data/5min"
+output_dir: "outputs/5min"
+folds: [1, 2, 3, 4, 5]
+epochs: 100
+batch_size: 256
+learning_rate: 2.0e-5
+alpha: 1.0
+patience: 10
+wavelet_packet_level: 3
