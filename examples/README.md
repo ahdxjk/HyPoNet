@@ -1,20 +1,23 @@
-# Example Data Layout
+# Expected Data Layout
 
-HyPo-Net expects pre-windowed 60-second segments stored as HDF5 files.
-One fold should look like:
+After preprocessing, each horizon should look like:
 
 ```text
-fold1/
-  train/
-    ART.h5                  # dataset key: ART, shape [N, 6000]
-    ECG.h5                  # dataset key: ECG, shape [N, 6000]
-    PLETH.h5                # dataset key: PLETH, shape [N, 6000]
-    extracted_features.h5   # first dataset, shape [N, 81]
-    HARD_LABELS.h5          # dataset key: HARD_LABELS, shape [N]
-    LABELS_CONCAVE.h5       # dataset key: LABELS_CONCAVE, shape [N]
-  val/
-  test/
+data/5min/
+  fold1/
+    train/
+      ART.h5
+      ECG.h5
+      PLETH.h5
+      STATIC.h5
+      HARD_LABELS.h5
+      LABELS_CONCAVE.h5
+      extracted_features.h5
+    val/
+    test/
+  ...
+  fold5/
 ```
 
-The repository does not include patient data. Replace these files with your
-own preprocessed segments following the same layout.
+The static clinical array used by `extract_handcrafted_features.py` should be
+indexed by `case_id - 1`, matching the original preprocessing convention.

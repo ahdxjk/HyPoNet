@@ -1,8 +1,4 @@
-"""Run five-fold HyPo-Net training.
-
-Example:
-    python scripts/train_cv.py --data-root data/5min --output-dir outputs/5min
-"""
+"""Run HyPo-Net five-fold training."""
 
 from __future__ import annotations
 
@@ -17,23 +13,23 @@ import torch
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from hyponet.train import fit_fold
+from hyponet.train import fit_fold, write_rows
 
 
-def set_seed(seed: int):
+def set_seed(seed: int) -> None:
     np.random.seed(seed)
     torch.manual_seed(seed)
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(seed)
 
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--data-root", required=True, help="Root containing fold1 ... fold5.")
-    parser.add_argument("--output-dir", default="outputs/hyponet_cv")
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Train HyPo-Net on patient-level folds.")
+    parser.add_argument("--data-root", required=True, type=Path, help="Root containing fold1...fold5.")
+    parser.add_argument("--output-dir", default=Path("outputs/hyponet_cv"), type=Path)
     parser.add_argument("--folds", nargs="+", type=int, default=[1, 2, 3, 4, 5])
     parser.add_argument("--epochs", type=int, default=100)
-    parser.add_argument("--batch-size", type=int, default=256)
+    parser.add_argument("--batch-size", type=int, default=32)
     parser.add_argument("--lr", type=float, default=2e-5)
     parser.add_argument("--alpha", type=float, default=1.0)
     parser.add_argument("--patience", type=int, default=10)
@@ -43,16 +39,14 @@ def main():
     args = parser.parse_args()
 
     set_seed(args.seed)
-    data_root = Path(args.data_root)
-    output_dir = Path(args.output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
+    args.output_dir.mkdir(parents=True, exist_ok=True)
 
     rows = []
     for fold in args.folds:
         print(f"\n===== fold {fold} =====", flush=True)
         metrics = fit_fold(
-            data_root / f"fold{fold}",
-            output_dir / f"fold{fold}",
+            args.data_root / f"fold{fold}",
+            args.output_dir / f"fold{fold}",
             epochs=args.epochs,
             batch_size=args.batch_size,
             lr=args.lr,
@@ -64,20 +58,17 @@ def main():
         metrics["fold"] = fold
         rows.append(metrics)
 
-    fieldnames = ["fold", "loss", "accuracy", "auroc", "precision", "recall", "f1", "kl_soft", "mse_soft", "mae_soft", "brier_hard", "ece"]
-    with open(output_dir / "fold_results.csv", "w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames)
-        writer.writeheader()
-        writer.writerows(rows)
-
-    with open(output_dir / "summary.csv", "w", newline="", encoding="utf-8") as f:
+    write_rows(args.output_dir / "fold_results.csv", rows)
+    summary_path = args.output_dir / "summary.csv"
+    with open(summary_path, "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
         writer.writerow(["metric", "mean", "std"])
-        for key in fieldnames[1:]:
-            values = np.array([row[key] for row in rows], dtype=float)
+        for key in rows[0]:
+            if key == "fold":
+                continue
+            values = np.asarray([row[key] for row in rows], dtype=float)
             writer.writerow([key, np.nanmean(values), np.nanstd(values, ddof=1)])
-
-    print(f"\nSaved results to {output_dir}", flush=True)
+    print(f"Saved results to {args.output_dir}", flush=True)
 
 
 if __name__ == "__main__":

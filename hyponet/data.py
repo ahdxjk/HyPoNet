@@ -1,72 +1,49 @@
-"""HDF5 data loading utilities for HyPo-Net.
-
-Expected split layout:
-
-    fold1/
-      train/
-        ART.h5, ECG.h5, PLETH.h5
-        extracted_features.h5
-        HARD_LABELS.h5
-        LABELS_CONCAVE.h5
-      val/
-      test/
-"""
+"""HDF5 dataset loader for HyPo-Net training."""
 
 from __future__ import annotations
 
 from pathlib import Path
 
 import h5py
+import numpy as np
 import torch
 from torch.utils.data import Dataset
 
 
-def read_h5_array(path: Path, key: str | None = None):
-    with h5py.File(path, "r") as f:
-        if key is None:
-            key = next(iter(f.keys()))
-        return f[key][:]
+def read_h5_dataset(path: Path, key: str) -> np.ndarray:
+    with h5py.File(path, "r") as h5f:
+        return h5f[key][:]
 
 
-class HypotensionH5Dataset(Dataset):
-    """Dataset for 60-s waveform segments and soft labels."""
+class HyPoNetH5Dataset(Dataset):
+    """Dataset for one train/validation/test split.
 
-    def __init__(
-        self,
-        split_dir,
-        soft_label_file: str = "LABELS_CONCAVE.h5",
-        soft_label_key: str = "LABELS_CONCAVE",
-    ):
-        split_dir = Path(split_dir)
-        self.art = torch.tensor(read_h5_array(split_dir / "ART.h5", "ART"), dtype=torch.float32)
-        self.ecg = torch.tensor(read_h5_array(split_dir / "ECG.h5", "ECG"), dtype=torch.float32)
-        self.pleth = torch.tensor(read_h5_array(split_dir / "PLETH.h5", "PLETH"), dtype=torch.float32)
-        self.features = torch.tensor(read_h5_array(split_dir / "extracted_features.h5"), dtype=torch.float32)
-        self.hard = torch.tensor(read_h5_array(split_dir / "HARD_LABELS.h5", "HARD_LABELS"), dtype=torch.float32).view(-1)
-        self.soft = torch.tensor(read_h5_array(split_dir / soft_label_file, soft_label_key), dtype=torch.float32).view(-1)
+    Required files:
+    ART.h5, ECG.h5, PLETH.h5, HARD_LABELS.h5, LABELS_CONCAVE.h5,
+    and extracted_features.h5.
+    """
 
-        n = len(self.hard)
-        for name, value in {
-            "ART": self.art,
-            "ECG": self.ecg,
-            "PLETH": self.pleth,
-            "features": self.features,
-            "soft labels": self.soft,
-        }.items():
-            if len(value) != n:
-                raise ValueError(f"{name} has {len(value)} samples, expected {n}.")
+    def __init__(self, split_dir: str | Path, soft_label_key: str = "LABELS_CONCAVE"):
+        self.split_dir = Path(split_dir)
+        self.art = read_h5_dataset(self.split_dir / "ART.h5", "ART").astype(np.float32)
+        self.ecg = read_h5_dataset(self.split_dir / "ECG.h5", "ECG").astype(np.float32)
+        self.pleth = read_h5_dataset(self.split_dir / "PLETH.h5", "PLETH").astype(np.float32)
+        self.features = read_h5_dataset(self.split_dir / "extracted_features.h5", "features").astype(np.float32)
+        self.hard_labels = read_h5_dataset(self.split_dir / "HARD_LABELS.h5", "HARD_LABELS").astype(np.float32).reshape(-1, 1)
+        self.soft_labels = read_h5_dataset(self.split_dir / f"{soft_label_key}.h5", soft_label_key).astype(np.float32).reshape(-1, 1)
 
-    def __len__(self):
-        return len(self.hard)
+        lengths = {len(self.art), len(self.ecg), len(self.pleth), len(self.features), len(self.hard_labels), len(self.soft_labels)}
+        if len(lengths) != 1:
+            raise ValueError(f"Inconsistent sample counts in {self.split_dir}: {lengths}")
 
-    def __getitem__(self, index):
-        signals = torch.stack(
-            [self.art[index], self.ecg[index], self.pleth[index]],
-            dim=0,
-        )
+    def __len__(self) -> int:
+        return len(self.art)
+
+    def __getitem__(self, index: int) -> dict[str, torch.Tensor]:
+        signals = np.stack([self.art[index], self.ecg[index], self.pleth[index]], axis=0)
         return {
-            "signals": signals,
-            "features": self.features[index],
-            "hard_label": self.hard[index],
-            "soft_label": self.soft[index],
+            "signals": torch.from_numpy(signals).float(),
+            "features": torch.from_numpy(self.features[index]).float(),
+            "hard_label": torch.from_numpy(self.hard_labels[index]).float(),
+            "soft_label": torch.from_numpy(self.soft_labels[index]).float(),
         }

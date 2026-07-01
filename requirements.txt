@@ -1,8 +1,10 @@
-torch>=2.0
 numpy
+pandas
 scipy
 scikit-learn
 h5py
-PyWavelets
+joblib
 tqdm
-PyYAML
+torch
+PyWavelets
+vitaldb
