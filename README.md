@@ -133,17 +133,5 @@ The `tests/` directory contains checks for:
 * warning evaluation;
 * simple reference models.
 
-## Manuscript result traceability
-
-For the manuscript release, the reported results should be linked to a fixed code and configuration snapshot.
-
-* Manuscript version: `<VERSION>`
-* Code release/tag: `<TAG>`
-* Commit: `<COMMIT_SHA>`
-* Main configuration: `configs/<PAPER_CONFIG>.yaml`
-* Patient split manifests: `<PATH_TO_SPLITS>`
-* Reported experiment outputs: `<PATH_TO_RESULTS>`
-
-The same fixed patient manifests should be used when reproducing hard-versus-soft supervision comparisons and model baselines.
 
 Raw VitalDB recordings are not redistributed in this repository and must be obtained separately under the applicable VitalDB access conditions.
