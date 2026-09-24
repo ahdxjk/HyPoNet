@@ -1,0 +1,17 @@
+sample_rate: 100
+hypotension_threshold: 65
+chunk_seconds: 60
+prediction_horizons_minutes: [5, 10, 15]
+soft_label_weights:
+  order: "MAP:time:trend"
+  ratio: "5:4:1"
+  normalized: [0.5, 0.4, 0.1]
+dwt_level: 3
+dropout: 0.2
+optimizer: "Adam"
+initial_learning_rate: 0.00002
+weight_decay: 0.00001
+learning_rate_schedule: "cosine_annealing"
+batch_size: 32
+supervision: "soft_bernoulli_kl"
+handcrafted_feature_dim: 81
