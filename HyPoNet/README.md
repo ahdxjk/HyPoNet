@@ -14,6 +14,37 @@ PyTorch code for perioperative hypotension (POH) risk prediction. Each model inp
 
 Install dependencies with `pip install -r requirements.txt`. Run `python scripts/<script_name>.py --help` for each script's arguments. `examples/README.md` shows the expected data layout.
 
+## Reproducibility and evaluation notes
+
+This repository is organized to mirror the evaluation pipeline described in the manuscript, from patient-level partitioning and segment generation to model training and chronological warning analysis.
+
+* **Patient-level data separation.** Patient assignment is performed before segment generation. All recordings and derived 60-second windows from the same patient remain within the same training, validation, or test subset in each evaluation run.
+* **Fixed manifests across comparisons.** The same patient manifests are reused across prediction horizons and matched supervision comparisons so that performance differences are not caused by different patient allocations.
+* **No future information at inference.** Future POH onset information is used only retrospectively to construct supervision targets and evaluation labels. The model receives only the observed physiological signals, handcrafted features, and available static variables at inference time.
+* **Soft targets are supervision signals rather than calibrated probabilities.** The risk-informed target is designed to encode temporal proximity and current hemodynamic state during training and should not be interpreted as a calibrated probability of POH occurrence.
+* **Matched hard-versus-soft evaluation.** The hard- and soft-supervised HyPoNet models can be trained under the same architecture, patient partitions, waveform inputs, feature preprocessing, and optimization settings, differing only in the supervision target.
+* **Separate segment-level and chronological evaluations.** Segment-level experiments evaluate horizon-specific discrimination, whereas the chronological monitoring pipeline excludes ongoing POH and evaluates strictly pre-onset warning behavior, including event sensitivity, false-alarm burden, lead time, and pre-onset coverage.
+* **Validation-only threshold selection.** Alarm thresholds are selected using validation recordings and then applied unchanged to the corresponding test recordings.
+* **Common evaluation grid for reference models.** MAP-only, trend-only, and MAP-plus-trend reference models can be evaluated on the same eligible chronological decisions used for HyPoNet, enabling direct comparison under the same warning protocol.
+
+These design choices are intended to keep patient separation, supervision comparisons, and chronological warning evaluation explicit and auditable.
+
+## Manuscript version and result traceability
+
+The manuscript results are associated with a fixed code and configuration snapshot.
+
+* Manuscript version: `HyPoNet revision <VERSION>`
+* Code release/tag: `<TAG>`
+* Commit: `<COMMIT_SHA>`
+* Main configuration: `configs/<PAPER_CONFIG>.yaml`
+* Patient split manifests: `<PATH_TO_SPLITS>`
+* Reported experiment outputs: `<PATH_TO_RESULTS>`
+
+The same fixed patient manifests should be used when reproducing hard-versus-soft supervision comparisons and model baselines.
+
+Raw VitalDB recordings are not redistributed in this repository and must be obtained separately under the applicable VitalDB access conditions.
+
+
 ## Scripts
 
 | File | Purpose |
